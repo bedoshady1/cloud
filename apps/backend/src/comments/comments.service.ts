@@ -6,7 +6,7 @@ import { Comment, CognitoUser } from '@mini-jira/shared';
 
 @Injectable()
 export class CommentsService {
-  private readonly table = process.env.DYNAMO_COMMENTS_TABLE ?? 'Comments';
+  private readonly table = process.env.DYNAMO_COMMENTS_TABLE!;
 
   constructor(private readonly db: DynamodbService, private readonly tasks: TasksService) {}
 

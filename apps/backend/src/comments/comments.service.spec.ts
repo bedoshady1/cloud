@@ -12,6 +12,7 @@ describe('CommentsService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    process.env.DYNAMO_COMMENTS_TABLE = 'Comments';
     service = new CommentsService(mockDynamo as unknown as DynamodbService, mockTasks as unknown as TasksService);
   });
 
