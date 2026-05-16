@@ -31,4 +31,10 @@ describe('TeamGuard', () => {
     const ctx = makeCtx({ role: UserRole.Employee, teamId: 'team-a' });
     expect(() => guard.canActivate(ctx)).toThrow(ForbiddenException);
   });
+
+  it('does not throw when user is undefined on non-manager-only route', () => {
+    jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
+    const ctx = makeCtx(undefined as unknown as object);
+    expect(guard.canActivate(ctx)).toBe(true);
+  });
 });

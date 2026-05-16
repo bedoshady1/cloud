@@ -1,6 +1,6 @@
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable, SetMetadata } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { UserRole } from '@mini-jira/shared';
+import { CognitoUser, UserRole } from '@mini-jira/shared';
 
 export const MANAGER_ONLY_KEY = 'managerOnly';
 export const ManagerOnly = () => SetMetadata(MANAGER_ONLY_KEY, true);
@@ -10,7 +10,7 @@ export class TeamGuard implements CanActivate {
   constructor(private reflector: Reflector) {}
 
   canActivate(context: ExecutionContext): boolean {
-    const request = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest<{ user: CognitoUser }>();
     const user = request.user;
 
     if (user?.role === UserRole.Manager) return true;
