@@ -10,8 +10,11 @@ export default function CallbackPage() {
     const params = new URLSearchParams(hash);
     const accessToken = params.get('access_token');
     if (accessToken) {
-      document.cookie = `access_token=${accessToken}; path=/; SameSite=Lax; Secure`;
-      router.replace('/dashboard');
+      fetch('/api/auth/set-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accessToken }),
+      }).then(() => router.replace('/dashboard'));
     } else {
       router.replace('/login');
     }
