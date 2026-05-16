@@ -11,7 +11,7 @@ export class TeamsService {
 
   async create(dto: CreateTeamDto): Promise<Team> {
     const team: Team = { teamId: dto.teamId, name: dto.name, createdAt: new Date().toISOString() };
-    await this.db.put(this.table, team);
+    await this.db.put(this.table, team as unknown as Record<string, unknown>);
     return team;
   }
 
