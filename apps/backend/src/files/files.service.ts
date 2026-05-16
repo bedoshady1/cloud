@@ -59,10 +59,9 @@ export class FilesService {
       Key: `originals/${taskId}/current/thumbnail.jpg`,
     })).catch(() => {});
 
-    await this.db.update(this.tasksTable, { taskId }, {
-      imageKey: null,
-      resizedImageKey: null,
-      updatedAt: new Date().toISOString(),
-    });
+    await Promise.all([
+      this.db.update(this.tasksTable, { taskId }, { updatedAt: new Date().toISOString() }),
+      this.db.removeAttributes(this.tasksTable, { taskId }, ['imageKey', 'resizedImageKey']),
+    ]);
   }
 }

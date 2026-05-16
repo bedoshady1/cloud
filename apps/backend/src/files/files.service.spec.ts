@@ -1,7 +1,7 @@
 import { FilesService } from './files.service';
 
 const mockS3 = { send: jest.fn() };
-const mockDynamo = { update: jest.fn(), get: jest.fn() };
+const mockDynamo = { update: jest.fn(), get: jest.fn(), removeAttributes: jest.fn() };
 
 jest.mock('@aws-sdk/client-s3', () => ({
   S3Client: jest.fn(() => mockS3),
@@ -31,5 +31,45 @@ describe('FilesService', () => {
     const result = await service.getPresignedUploadUrl('task-1', 'image.jpg');
     expect(result.uploadUrl).toContain('presigned-url');
     expect(result.key).toContain('task-1');
+  });
+
+  it('confirmUpload writes imageKey to DynamoDB', async () => {
+    await service.confirmUpload('task-1', 'originals/task-1/current/123-photo.jpg');
+    expect(mockDynamo.update).toHaveBeenCalledWith(
+      'mini-jira-tasks',
+      { taskId: 'task-1' },
+      expect.objectContaining({ imageKey: 'originals/task-1/current/123-photo.jpg' }),
+    );
+  });
+
+  it('replaceImage copies old image to history prefix and returns new presigned URL', async () => {
+    mockS3.send.mockResolvedValueOnce({});
+    const result = await service.replaceImage('task-1', 'new.jpg', 'originals/task-1/current/old.jpg');
+    expect(mockS3.send).toHaveBeenCalledWith(
+      expect.objectContaining({ CopySource: 'test-originals/originals/task-1/current/old.jpg' }),
+    );
+    expect(result.key).toContain('current/');
+    expect(result.uploadUrl).toContain('presigned-url');
+  });
+
+  it('deleteTaskImages deletes S3 objects and removes imageKey/resizedImageKey from DynamoDB', async () => {
+    mockS3.send
+      .mockResolvedValueOnce({ Contents: [{ Key: 'originals/task-1/current/old.jpg' }] }) // ListObjectsV2
+      .mockResolvedValueOnce({}) // DeleteObjects
+      .mockResolvedValueOnce({}); // DeleteObject (thumbnail)
+    mockDynamo.removeAttributes = jest.fn();
+
+    await service.deleteTaskImages('task-1');
+
+    expect(mockDynamo.update).toHaveBeenCalledWith(
+      'mini-jira-tasks',
+      { taskId: 'task-1' },
+      expect.objectContaining({ updatedAt: expect.any(String) }),
+    );
+    expect(mockDynamo.removeAttributes).toHaveBeenCalledWith(
+      'mini-jira-tasks',
+      { taskId: 'task-1' },
+      ['imageKey', 'resizedImageKey'],
+    );
   });
 });
