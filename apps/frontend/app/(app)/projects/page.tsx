@@ -4,8 +4,9 @@ import { parseJwtPayload } from '@/lib/auth';
 import { apiClient } from '@/lib/api-client';
 import Link from 'next/link';
 import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button';
 import { UserRole } from '@mini-jira/shared';
+import { cn } from '@/lib/utils';
 
 export default async function ProjectsPage() {
   const cookieStore = await cookies();
@@ -21,9 +22,9 @@ export default async function ProjectsPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Projects</h1>
         {user.role === UserRole.Manager && (
-          <Button asChild size="sm">
-            <Link href="/projects/new">New Project</Link>
-          </Button>
+          <Link href="/projects/new" className={cn(buttonVariants({ size: 'sm' }))}>
+            New Project
+          </Link>
         )}
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
