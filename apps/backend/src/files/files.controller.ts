@@ -34,7 +34,9 @@ export class FilesController {
   async confirmUpload(
     @Param('taskId') taskId: string,
     @Body() dto: ConfirmUploadDto,
+    @CurrentUser() user: CognitoUser,
   ) {
+    await this.tasksService.findOne(taskId, user);
     await this.filesService.confirmUpload(taskId, dto.imageKey);
     return { success: true };
   }
