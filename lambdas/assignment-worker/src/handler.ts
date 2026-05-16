@@ -43,21 +43,31 @@ export const handler = async (event: SQSEvent): Promise<void> => {
       teamId: payload.teamId,
     };
 
-    await dynamo.send(new PutCommand({
-      TableName: process.env.DYNAMO_AUDIT_LOG_TABLE!,
-      Item: auditEntry,
-    }));
+    // Write AuditLog
+    try {
+      await dynamo.send(new PutCommand({
+        TableName: process.env.DYNAMO_AUDIT_LOG_TABLE!,
+        Item: auditEntry,
+      }));
+    } catch (e) {
+      console.error('Failed to write AuditLog for task', payload.taskId, e);
+    }
 
-    await cloudwatch.send(new PutMetricDataCommand({
-      Namespace: 'MiniJira',
-      MetricData: [{
-        MetricName: 'TasksAssigned',
-        Dimensions: [{ Name: 'teamId', Value: payload.teamId }],
-        Value: 1,
-        Unit: 'Count',
-        Timestamp: new Date(payload.assignedAt),
-      }],
-    }));
+    // Publish CloudWatch metric (independent — don't let CW failure affect AuditLog success)
+    try {
+      await cloudwatch.send(new PutMetricDataCommand({
+        Namespace: 'MiniJira',
+        MetricData: [{
+          MetricName: 'TasksAssigned',
+          Dimensions: [{ Name: 'teamId', Value: payload.teamId }],
+          Value: 1,
+          Unit: 'Count',
+          Timestamp: new Date(payload.assignedAt),
+        }],
+      }));
+    } catch (e) {
+      console.error('Failed to publish CloudWatch metric for task', payload.taskId, e);
+    }
 
     console.log(`Processed assignment for task ${payload.taskId}, team ${payload.teamId}`);
   }
