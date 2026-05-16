@@ -7,8 +7,8 @@ describe('Auth (e2e)', () => {
   let app: INestApplication;
 
   beforeAll(async () => {
-    process.env.COGNITO_USER_POOL_ID = process.env.COGNITO_USER_POOL_ID || 'eu-central-1_KxmWvTWiA';
-    process.env.COGNITO_CLIENT_ID = process.env.COGNITO_CLIENT_ID || '2po12vg2nhltnsrc41fftbsflj';
+    process.env.COGNITO_USER_POOL_ID = process.env.COGNITO_USER_POOL_ID ?? 'us-east-1_TESTONLY';
+    process.env.COGNITO_CLIENT_ID = process.env.COGNITO_CLIENT_ID ?? 'test-client-id-not-real';
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
