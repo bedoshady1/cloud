@@ -167,9 +167,9 @@ ASG: min 2 / max 4, Amazon Linux 2023, Node.js 20, PM2. Health check: `/api/heal
 
 | Plan | Title | Status |
 |------|-------|--------|
-| Plan 1 | Auth & Cognito Setup | **In Progress** (Task 1 done) |
-| Plan 2 | Core CRUD API (NestJS + DynamoDB) | Pending |
-| Plan 3 | File Pipeline (S3 + Lambda resize) | Pending |
+| Plan 1 | Auth & Cognito Setup | **Complete** |
+| Plan 2 | Core CRUD API (NestJS + DynamoDB) | **Tasks 1–8 complete; Task 9 (smoke test, AWS-dependent) pending** |
+| Plan 3 | File Pipeline (S3 + Lambda resize) | **Code complete (Tasks 2–4 done); AWS Console steps deferred** |
 | Plan 4 | Event-Driven Layer (SNS + SQS + Worker) | Pending |
 | Plan 5 | Scheduled Jobs (EventBridge + Digest Lambda) | Pending |
 | Plan 6 | Frontend (Next.js + Kanban UI) | Pending |
@@ -177,14 +177,48 @@ ASG: min 2 / max 4, Amazon Linux 2023, Node.js 20, PM2. Health check: `/api/heal
 
 ---
 
-## Current State (Plan 1, as of Task 1 complete)
+## Deferred AWS Console Steps
+
+All code is written and tested. These AWS Console steps must be completed **before the smoke test / demo**. Do them all in one session just before Plan 7 (Infrastructure) goes live.
+
+### From Plan 3 — File Pipeline
+
+**S3 Buckets (Plan 3, Task 1)**
+- Create bucket `mini-jira-originals-<account-id>` — region `us-east-1`, block all public access, versioning OFF
+- Create bucket `mini-jira-resized-<account-id>` — region `us-east-1`, block all public access
+- Add CORS to originals bucket: AllowedMethods `[PUT]`, AllowedOrigins `[http://localhost:3000, https://<cloudfront-domain>]`, AllowedHeaders `[*]`
+- Add to `apps/backend/.env`: `S3_ORIGINALS_BUCKET=mini-jira-originals-<account-id>` and `S3_RESIZED_BUCKET=mini-jira-resized-<account-id>`
+- IAM → Role `EC2InstanceRole` → inline policy: `s3:PutObject`, `s3:GetObject`, `s3:DeleteObject`, `s3:ListBucket` on both bucket ARNs
+
+**Image Resize Lambda (Plan 3, Task 5)**
+- Build + zip: `cd lambdas/image-resize && npm install && npm run build && cd dist && zip -r ../function.zip .`
+- Lambda → Create function: name `mini-jira-image-resize`, runtime Node.js 20.x, x86_64, new role `ImageResizeLambdaRole`
+- Upload `lambdas/image-resize/function.zip`
+- Lambda env vars: `AWS_REGION=us-east-1`, `S3_RESIZED_BUCKET=mini-jira-resized-<account-id>`, `DYNAMO_TASKS_TABLE=mini-jira-tasks`
+- S3 trigger: bucket `mini-jira-originals-<account-id>`, event type `PUT`, prefix `originals/`
+- IAM → `ImageResizeLambdaRole` → inline policy: `s3:GetObject` on originals, `s3:PutObject` on resized, `dynamodb:UpdateItem` on tasks table
+
+---
+
+## Current State (Plan 3 code complete — 29 backend + 8 Lambda tests passing)
 
 **Done:**
 - Monorepo root scaffolded: `package.json`, `turbo.json`, `.gitignore`
-- `packages/shared/` with all TypeScript types: `UserRole`, `TaskStatus`, `TaskPriority`, `User`, `Team`, `Project`, `Task`, `Comment`, `AuditLogEntry`, `CognitoUser`
-- Git initialized, first commit: `af3e86e` — "feat: scaffold monorepo with shared types package"
+- `packages/shared/` with all TypeScript types
+- Plan 1 (Auth & Cognito): NestJS backend scaffolded, JwtAuthGuard, RolesGuard, health endpoint, Cognito configured (`eu-central-1_KxmWvTWiA`)
+- Plan 2 Task 1: DynamoDB tables created in AWS + `.env` vars set
+- Plan 2 Task 2: `DynamodbService` (global module, AWS SDK v3 DocumentClient) — also has `removeAttributes` for REMOVE expressions
+- Plan 2 Task 3: `TeamGuard` + `ManagerOnly()` decorator
+- Plan 2 Task 4: Projects CRUD module (Manager-only create/update/delete)
+- Plan 2 Task 5: Tasks CRUD module with server-side team isolation via GSI, audit log
+- Plan 2 Task 6: Comments module with team-access enforcement via TasksService
+- Plan 2 Task 7: Teams + Users modules (Manager-only)
+- Plan 2 Task 8: MetricsService — publishes TaskCreated, TaskClosed (teamId dim), TaskTimeToClose to CloudWatch; CloudWatch failures isolated with try/catch
+- Plan 3 Task 2: `FilesService` — presigned S3 PUT URLs, version retention (history/ prefix), bulk delete, DynamoDB cleanup
+- Plan 3 Task 3: `FilesController` — POST/confirm/DELETE on `/api/tasks/:id/image`; task deletion auto-cleans images via forwardRef injection
+- Plan 3 Task 4: `image-resize` Lambda — sharp 400×400 JPEG, per-record error isolation, body undefined guard, DynamoDB condition check
 
-**Up next (Task 2):** Scaffold NestJS backend in `apps/backend/`
+**Up next:** Plan 4 — Event-Driven Layer (SNS + SQS + Assignment Worker Lambda)
 
 ---
 
