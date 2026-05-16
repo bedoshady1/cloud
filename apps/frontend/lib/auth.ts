@@ -8,8 +8,9 @@ export function getTokenFromCookie(cookieHeader: string | null): string | null {
 
 export function parseJwtPayload(token: string): CognitoUser | null {
   try {
-    const base64 = token.split('.')[1];
-    const decoded = JSON.parse(Buffer.from(base64, 'base64').toString('utf-8'));
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const decoded = JSON.parse(atob(base64));
     return {
       userId: decoded.sub,
       email: decoded.email,

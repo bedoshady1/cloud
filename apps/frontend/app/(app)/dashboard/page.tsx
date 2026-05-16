@@ -1,9 +1,9 @@
 import { cookies } from 'next/headers';
-import { getTokenFromCookie, parseJwtPayload } from '../../../lib/auth';
+import { parseJwtPayload } from '../../../lib/auth';
 
 export default async function DashboardPage() {
   const cookieStore = await cookies();
-  const token = getTokenFromCookie(cookieStore.toString());
+  const token = cookieStore.get('access_token')?.value ?? null;
   const user = token ? parseJwtPayload(token) : null;
 
   return (
