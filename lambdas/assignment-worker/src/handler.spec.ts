@@ -28,7 +28,7 @@ jest.mock('@aws-sdk/client-cloudwatch', () => {
 });
 
 describe('parseMessage', () => {
-  it('parses a valid SNS-wrapped SQS message body', () => {
+  it('parses a valid assignment payload string', () => {
     const snsEnvelope = JSON.stringify({
       taskId: 't1',
       taskTitle: 'Fix bug',
@@ -45,6 +45,10 @@ describe('parseMessage', () => {
 
   it('throws on invalid JSON', () => {
     expect(() => parseMessage('not-json')).toThrow();
+  });
+
+  it('throws when assignedAt is missing', () => {
+    expect(() => parseMessage(JSON.stringify({ taskId: 't1', teamId: 'team-a' }))).toThrow('assignedAt');
   });
 });
 

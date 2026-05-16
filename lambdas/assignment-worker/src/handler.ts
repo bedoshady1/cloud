@@ -18,7 +18,7 @@ export interface AssignmentPayload {
 
 export function parseMessage(body: string): AssignmentPayload {
   const parsed = JSON.parse(body);
-  if (!parsed.taskId || !parsed.teamId) throw new Error('Invalid payload: missing taskId or teamId');
+  if (!parsed.taskId || !parsed.teamId || !parsed.assignedAt) throw new Error('Invalid payload: missing taskId, teamId, or assignedAt');
   return parsed as AssignmentPayload;
 }
 
