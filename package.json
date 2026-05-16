@@ -1,14 +1,21 @@
 {
   "name": "mini-jira",
   "private": true,
-  "workspaces": ["apps/*", "packages/*"],
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
     "test": "turbo run test"
   },
   "devDependencies": {
+    "ts-loader": "^9.5.7",
     "turbo": "^2.0.0",
     "typescript": "^5.4.0"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2"
   }
 }
