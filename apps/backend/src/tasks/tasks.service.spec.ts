@@ -1,5 +1,6 @@
 import { TasksService } from './tasks.service';
 import { DynamodbService } from '../dynamodb/dynamodb.service';
+import { MetricsService } from '../metrics/metrics.service';
 import { UserRole, TaskStatus, TaskPriority } from '@mini-jira/shared';
 
 const mockDynamo = {
@@ -11,6 +12,11 @@ const mockDynamo = {
   scan: jest.fn().mockResolvedValue({ items: [], lastEvaluatedKey: undefined }),
 };
 
+const mockMetrics = {
+  taskCreated: jest.fn().mockResolvedValue(undefined),
+  taskClosed: jest.fn().mockResolvedValue(undefined),
+};
+
 const manager = { userId: 'mgr-1', role: UserRole.Manager, teamId: '', email: 'mgr@test.com', displayName: 'Manager' };
 const employee = { userId: 'emp-1', role: UserRole.Employee, teamId: 'team-frontend', email: 'emp@test.com', displayName: 'Employee' };
 
@@ -19,7 +25,7 @@ describe('TasksService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new TasksService(mockDynamo as unknown as DynamodbService);
+    service = new TasksService(mockDynamo as unknown as DynamodbService, mockMetrics as unknown as MetricsService);
   });
 
   it('creates a task with ToDo status', async () => {

@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { DynamodbService } from '../dynamodb/dynamodb.service';
+import { MetricsService } from '../metrics/metrics.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { Task, TaskStatus, UserRole, CognitoUser, AuditLogEntry } from '@mini-jira/shared';
@@ -10,7 +11,10 @@ export class TasksService {
   private readonly auditTable = process.env.DYNAMO_AUDIT_LOG_TABLE!;
   private readonly teamGsi = process.env.TASKS_TEAM_GSI || 'teamId-createdAt-index';
 
-  constructor(private readonly db: DynamodbService) {}
+  constructor(
+    private readonly db: DynamodbService,
+    private readonly metrics: MetricsService,
+  ) {}
 
   async create(dto: CreateTaskDto, managerId: string): Promise<Task> {
     const now = new Date().toISOString();
@@ -28,6 +32,7 @@ export class TasksService {
       updatedAt: now,
     };
     await this.db.put(this.table, task as unknown as Record<string, unknown>);
+    await this.metrics.taskCreated();
     return task;
   }
 
@@ -80,6 +85,9 @@ export class TasksService {
         teamId: task.teamId,
       };
       await this.db.put(this.auditTable, entry as unknown as Record<string, unknown>);
+      if (dto.status === TaskStatus.Done) {
+        await this.metrics.taskClosed(task.teamId, task.createdAt);
+      }
     }
   }
 
