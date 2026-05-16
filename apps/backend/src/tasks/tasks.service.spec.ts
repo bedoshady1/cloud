@@ -104,4 +104,26 @@ describe('TasksService', () => {
     mockDynamo.get.mockResolvedValue({ taskId: 't1', teamId: 'team-backend' });
     await expect(service.remove('t1', employee)).rejects.toThrow('Access denied');
   });
+
+  it('calls publishTaskAssigned when assignee is found', async () => {
+    mockUsers.findOne.mockResolvedValue({ userId: 'emp-1', email: 'sara@example.com', displayName: 'Sara' });
+    const dto = { title: 'Fix bug', priority: TaskPriority.High, deadline: '2026-05-20', assigneeId: 'emp-1', teamId: 'team-frontend', projectId: 'proj-1' };
+    await service.create(dto, manager.userId);
+    expect(mockNotifications.publishTaskAssigned).toHaveBeenCalledTimes(1);
+    expect(mockNotifications.publishTaskAssigned).toHaveBeenCalledWith(
+      expect.objectContaining({
+        assigneeId: 'emp-1',
+        assigneeEmail: 'sara@example.com',
+        teamId: 'team-frontend',
+        managerId: manager.userId,
+      }),
+    );
+  });
+
+  it('does not call publishTaskAssigned when assignee is not found', async () => {
+    mockUsers.findOne.mockRejectedValue(new Error('User not found'));
+    const dto = { title: 'Fix bug', priority: TaskPriority.High, deadline: '2026-05-20', assigneeId: 'emp-missing', teamId: 'team-frontend', projectId: 'proj-1' };
+    await service.create(dto, manager.userId);
+    expect(mockNotifications.publishTaskAssigned).not.toHaveBeenCalled();
+  });
 });

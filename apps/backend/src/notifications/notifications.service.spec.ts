@@ -26,5 +26,12 @@ describe('NotificationsService', () => {
       managerId: 'mgr-1',
     });
     expect(mockSns.send).toHaveBeenCalledTimes(1);
+    const callArg = mockSns.send.mock.calls[0][0];
+    const parsed = JSON.parse(callArg.Message);
+    expect(parsed.taskId).toBe('t1');
+    expect(parsed.assigneeEmail).toBe('sara@example.com');
+    expect(parsed.assignedAt).toBeDefined();
+    expect(callArg.Subject).toBe('[Mini-Jira] New task assigned: Fix bug');
+    expect(callArg.TopicArn).toBe('arn:aws:sns:us-east-1:123:test-topic');
   });
 });

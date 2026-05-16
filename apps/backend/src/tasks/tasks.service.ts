@@ -43,16 +43,20 @@ export class TasksService {
     } catch (err) {
       console.warn('[MetricsService] taskCreated failed', err);
     }
-    const assignee = await this.users.findOne(dto.assigneeId).catch(() => null);
-    if (assignee) {
-      await this.notifications.publishTaskAssigned({
-        taskId: task.taskId,
-        taskTitle: task.title,
-        assigneeId: dto.assigneeId,
-        assigneeEmail: assignee.email,
-        teamId: dto.teamId,
-        managerId,
-      });
+    try {
+      const assignee = await this.users.findOne(dto.assigneeId).catch(() => null);
+      if (assignee) {
+        await this.notifications.publishTaskAssigned({
+          taskId: task.taskId,
+          taskTitle: task.title,
+          assigneeId: dto.assigneeId,
+          assigneeEmail: assignee.email,
+          teamId: dto.teamId,
+          managerId,
+        });
+      }
+    } catch (err) {
+      console.warn('[NotificationsService] publishTaskAssigned failed', err);
     }
     return task;
   }
