@@ -14,6 +14,7 @@ interface TaskItem {
   status: string;
   assigneeId: string;
   deadline: string;
+  projectId?: string;
   teamId?: string;
 }
 
@@ -35,12 +36,12 @@ export function groupTasksByAssignee(tasks: TaskItem[]): Record<string, TaskItem
   }, {});
 }
 
-export function buildDigestEmail(displayName: string, tasks: TaskItem[], date: string): { subject: string; body: string } {
+export function buildDigestEmail(displayName: string, tasks: TaskItem[], date: string, appUrl: string): { subject: string; body: string } {
   const taskList = tasks
-    .map((t) => `• ${t.title} [${t.priority}] — ${t.status}`)
+    .map((t) => `• ${t.title} [${t.priority}] — ${t.projectId ?? 'N/A'} — ${t.status}`)
     .join('\n');
 
-  const body = `Hi ${displayName},\nYou have ${tasks.length} task${tasks.length !== 1 ? 's' : ''} due today:\n${taskList}\n\nLog in at ${process.env.APP_URL || 'https://your-app.cloudfront.net'} to update your tasks.`;
+  const body = `Hi ${displayName},\nYou have ${tasks.length} task${tasks.length !== 1 ? 's' : ''} due or overdue today (${date}):\n${taskList}\n\nLog in at ${appUrl} to update your tasks.`;
 
   return {
     subject: `[Mini-Jira] Your tasks due today — ${date}`,
@@ -53,6 +54,7 @@ export const handler = async (): Promise<void> => {
   const tasksTable = process.env.DYNAMO_TASKS_TABLE!;
   const usersTable = process.env.DYNAMO_USERS_TABLE!;
   const digestTopicArn = process.env.SNS_DIGEST_TOPIC_ARN!;
+  const appUrl = process.env.APP_URL || 'https://your-app.cloudfront.net';
 
   // Paginated scan: deadline <= today AND status != Done
   let items: TaskItem[] = [];
@@ -69,9 +71,7 @@ export const handler = async (): Promise<void> => {
     lastKey = scanResult.LastEvaluatedKey as Record<string, any> | undefined;
   } while (lastKey);
 
-  const tasks = items;
-
-  if (tasks.length === 0) {
+  if (items.length === 0) {
     console.log(`No tasks due today (${today}). Exiting.`);
     try {
       await cloudwatch.send(new PutMetricDataCommand({
@@ -85,7 +85,7 @@ export const handler = async (): Promise<void> => {
   }
 
   // Overdue = deadline strictly before today; today's tasks are not overdue
-  const overdueTasks = tasks.filter((t) => t.deadline < today);
+  const overdueTasks = items.filter((t) => t.deadline < today);
   try {
     await cloudwatch.send(new PutMetricDataCommand({
       Namespace: 'MiniJira',
@@ -98,7 +98,7 @@ export const handler = async (): Promise<void> => {
     console.error('Failed to publish CloudWatch metrics:', e);
   }
 
-  const grouped = groupTasksByAssignee(tasks);
+  const grouped = groupTasksByAssignee(items);
 
   for (const [assigneeId, assigneeTasks] of Object.entries(grouped)) {
     let user: UserItem;
@@ -111,7 +111,7 @@ export const handler = async (): Promise<void> => {
       continue;
     }
 
-    const { subject, body } = buildDigestEmail(user.displayName, assigneeTasks, today);
+    const { subject, body } = buildDigestEmail(user.displayName, assigneeTasks, today, appUrl);
 
     try {
       await sns.send(new PublishCommand({

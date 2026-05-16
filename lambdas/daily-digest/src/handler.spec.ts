@@ -64,13 +64,14 @@ describe('groupTasksByAssignee', () => {
 describe('buildDigestEmail', () => {
   it('builds an email with task list', () => {
     const tasks = [
-      { title: 'Fix login', priority: 'High', status: 'ToDo' },
+      { title: 'Fix login', priority: 'High', status: 'ToDo', projectId: 'proj-1' },
     ];
-    const email = buildDigestEmail('Sara', tasks as any[], '2026-05-04');
+    const email = buildDigestEmail('Sara', tasks as any[], '2026-05-04', 'https://example.com');
     expect(email.subject).toBe('[Mini-Jira] Your tasks due today — 2026-05-04');
     expect(email.body).toContain('Fix login');
     expect(email.body).toContain('High');
     expect(email.body).toContain('Sara');
+    expect(email.body).toContain('proj-1');
   });
 });
 
