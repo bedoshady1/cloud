@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ProjectsService } from './projects.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
@@ -19,7 +19,16 @@ export class ProjectsController {
 
   @Get()
   findAll(@Query('limit') limit?: string, @Query('lastKey') lastKey?: string) {
-    return this.projectsService.findAll(limit ? parseInt(limit) : 20, lastKey ? JSON.parse(lastKey) : undefined);
+    const parsedLimit = Math.max(1, Math.min(100, parseInt(limit ?? '20', 10) || 20));
+    let parsedLastKey: Record<string, unknown> | undefined;
+    if (lastKey) {
+      try {
+        parsedLastKey = JSON.parse(lastKey);
+      } catch {
+        throw new BadRequestException('Invalid lastKey format');
+      }
+    }
+    return this.projectsService.findAll(parsedLimit, parsedLastKey);
   }
 
   @Get(':id')

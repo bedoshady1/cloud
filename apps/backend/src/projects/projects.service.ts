@@ -37,9 +37,11 @@ export class ProjectsService {
 
   async update(projectId: string, dto: UpdateProjectDto): Promise<void> {
     await this.findOne(projectId);
-    const updates: Record<string, unknown> = { updatedAt: new Date().toISOString() };
-    if (dto.title) updates.title = dto.title;
-    if (dto.description) updates.description = dto.description;
+    const updates: Record<string, unknown> = {};
+    if (dto.title !== undefined) updates.title = dto.title;
+    if (dto.description !== undefined) updates.description = dto.description;
+    if (Object.keys(updates).length === 0) return;
+    updates.updatedAt = new Date().toISOString();
     await this.db.update(this.table, { projectId }, updates);
   }
 
