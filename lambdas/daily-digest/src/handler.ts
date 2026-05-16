@@ -3,7 +3,7 @@ import { DynamoDBDocumentClient, ScanCommand, GetCommand } from '@aws-sdk/lib-dy
 import { SNSClient, PublishCommand } from '@aws-sdk/client-sns';
 import { CloudWatchClient, PutMetricDataCommand } from '@aws-sdk/client-cloudwatch';
 
-const dynamo = DynamoDBDocumentClient.from(new DynamoDBClient({}));
+const dynamo = DynamoDBDocumentClient.from(new DynamoDBClient({ region: process.env.AWS_REGION || 'us-east-1' }));
 const sns = new SNSClient({ region: process.env.AWS_REGION || 'us-east-1' });
 const cloudwatch = new CloudWatchClient({ region: process.env.AWS_REGION || 'us-east-1' });
 
@@ -54,32 +54,49 @@ export const handler = async (): Promise<void> => {
   const usersTable = process.env.DYNAMO_USERS_TABLE!;
   const digestTopicArn = process.env.SNS_DIGEST_TOPIC_ARN!;
 
-  const scanResult = await dynamo.send(new ScanCommand({
-    TableName: tasksTable,
-    FilterExpression: 'deadline = :today AND #st <> :done',
-    ExpressionAttributeNames: { '#st': 'status' },
-    ExpressionAttributeValues: { ':today': today, ':done': 'Done' },
-  }));
+  // Paginated scan: deadline <= today AND status != Done
+  let items: TaskItem[] = [];
+  let lastKey: Record<string, any> | undefined;
+  do {
+    const scanResult = await dynamo.send(new ScanCommand({
+      TableName: tasksTable,
+      FilterExpression: 'deadline <= :today AND #st <> :done',
+      ExpressionAttributeNames: { '#st': 'status' },
+      ExpressionAttributeValues: { ':today': today, ':done': 'Done' },
+      ExclusiveStartKey: lastKey,
+    }));
+    items.push(...((scanResult.Items ?? []) as TaskItem[]));
+    lastKey = scanResult.LastEvaluatedKey as Record<string, any> | undefined;
+  } while (lastKey);
 
-  const tasks = (scanResult.Items ?? []) as TaskItem[];
+  const tasks = items;
 
   if (tasks.length === 0) {
     console.log(`No tasks due today (${today}). Exiting.`);
-    await cloudwatch.send(new PutMetricDataCommand({
-      Namespace: 'MiniJira',
-      MetricData: [{ MetricName: 'OverdueTasks', Value: 0, Unit: 'Count', Timestamp: new Date() }],
-    }));
+    try {
+      await cloudwatch.send(new PutMetricDataCommand({
+        Namespace: 'MiniJira',
+        MetricData: [{ MetricName: 'OverdueTasks', Value: 0, Unit: 'Count', Timestamp: new Date() }],
+      }));
+    } catch (e) {
+      console.error('Failed to publish OverdueTasks=0 CloudWatch metric:', e);
+    }
     return;
   }
 
+  // Overdue = deadline strictly before today; today's tasks are not overdue
   const overdueTasks = tasks.filter((t) => t.deadline < today);
-  await cloudwatch.send(new PutMetricDataCommand({
-    Namespace: 'MiniJira',
-    MetricData: [
-      { MetricName: 'OverdueTasks', Value: overdueTasks.length, Unit: 'Count', Timestamp: new Date() },
-      { MetricName: 'DailyDigestSent', Dimensions: [{ Name: 'date', Value: today }], Value: 1, Unit: 'Count', Timestamp: new Date() },
-    ],
-  }));
+  try {
+    await cloudwatch.send(new PutMetricDataCommand({
+      Namespace: 'MiniJira',
+      MetricData: [
+        { MetricName: 'OverdueTasks', Value: overdueTasks.length, Unit: 'Count', Timestamp: new Date() },
+        { MetricName: 'DailyDigestSent', Dimensions: [{ Name: 'date', Value: today }], Value: 1, Unit: 'Count', Timestamp: new Date() },
+      ],
+    }));
+  } catch (e) {
+    console.error('Failed to publish CloudWatch metrics:', e);
+  }
 
   const grouped = groupTasksByAssignee(tasks);
 
@@ -96,12 +113,15 @@ export const handler = async (): Promise<void> => {
 
     const { subject, body } = buildDigestEmail(user.displayName, assigneeTasks, today);
 
-    await sns.send(new PublishCommand({
-      TopicArn: digestTopicArn,
-      Subject: subject,
-      Message: body,
-    }));
-
-    console.log(`Sent digest to ${user.email} for ${assigneeTasks.length} tasks`);
+    try {
+      await sns.send(new PublishCommand({
+        TopicArn: digestTopicArn,
+        Subject: subject,
+        Message: body,
+      }));
+      console.log(`Sent digest to ${user.email} for ${assigneeTasks.length} tasks`);
+    } catch (e) {
+      console.error(`Failed to send digest to ${user.email}:`, e);
+    }
   }
 };
