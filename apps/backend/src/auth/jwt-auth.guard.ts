@@ -6,21 +6,33 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { CognitoJwtVerifier } from 'aws-jwt-verify';
+import { CognitoJwtVerifierSingleUserPool } from 'aws-jwt-verify/cognito-verifier';
 import { IS_PUBLIC_KEY } from './public.decorator';
 import { JwtStrategy } from './jwt.strategy';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
-  private verifier = CognitoJwtVerifier.create({
-    userPoolId: process.env.COGNITO_USER_POOL_ID!,
-    tokenUse: 'access',
-    clientId: process.env.COGNITO_CLIENT_ID!,
-  });
+  private verifier: CognitoJwtVerifierSingleUserPool<{
+    userPoolId: string;
+    tokenUse: 'access';
+    clientId: string;
+  }>;
 
   constructor(
     private reflector: Reflector,
     private jwtStrategy: JwtStrategy,
-  ) {}
+  ) {
+    const poolId = process.env.COGNITO_USER_POOL_ID;
+    const clientId = process.env.COGNITO_CLIENT_ID;
+    if (!poolId || !clientId) {
+      throw new Error('COGNITO_USER_POOL_ID and COGNITO_CLIENT_ID must be set');
+    }
+    this.verifier = CognitoJwtVerifier.create({
+      userPoolId: poolId,
+      tokenUse: 'access',
+      clientId,
+    });
+  }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
@@ -38,7 +50,7 @@ export class JwtAuthGuard implements CanActivate {
       request.user = this.jwtStrategy.validate(payload as Record<string, string>);
       return true;
     } catch {
-      throw new UnauthorizedException('Invalid or expired token');
+      throw new UnauthorizedException();
     }
   }
 }

@@ -79,6 +79,6 @@ export interface CognitoUser {
   userId: string;
   email: string;
   role: UserRole;
-  teamId: string;
+  teamId?: string;
   displayName: string;
 }
