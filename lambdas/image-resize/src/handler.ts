@@ -24,43 +24,52 @@ async function streamToBuffer(stream: Readable): Promise<Buffer> {
 
 export const handler = async (event: S3Event): Promise<void> => {
   for (const record of event.Records) {
-    const bucket = record.s3.bucket.name;
     const key = decodeURIComponent(record.s3.object.key.replace(/\+/g, ' '));
+    try {
+      const bucket = record.s3.bucket.name;
 
-    const taskId = extractTaskIdFromKey(key);
-    if (!taskId) {
-      console.warn(`Skipping non-task key: ${key}`);
-      continue;
+      const taskId = extractTaskIdFromKey(key);
+      if (!taskId) {
+        console.warn(`Skipping non-task key: ${key}`);
+        continue;
+      }
+
+      const getResult = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+      if (!getResult.Body) {
+        console.warn(`Empty body for key: ${key}`);
+        continue;
+      }
+      const buffer = await streamToBuffer(getResult.Body as Readable);
+
+      const resized = await sharp(buffer)
+        .resize(400, 400, { fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 85 })
+        .toBuffer();
+
+      const resizedKey = `originals/${taskId}/current/thumbnail.jpg`;
+      const resizedBucket = process.env.S3_RESIZED_BUCKET!;
+
+      await s3.send(new PutObjectCommand({
+        Bucket: resizedBucket,
+        Key: resizedKey,
+        Body: resized,
+        ContentType: 'image/jpeg',
+      }));
+
+      await dynamo.send(new UpdateCommand({
+        TableName: process.env.DYNAMO_TASKS_TABLE!,
+        Key: { taskId },
+        UpdateExpression: 'SET resizedImageKey = :rk, updatedAt = :ua',
+        ExpressionAttributeValues: {
+          ':rk': resizedKey,
+          ':ua': new Date().toISOString(),
+        },
+        ConditionExpression: 'attribute_exists(taskId)',
+      }));
+
+      console.log(`Resized image for task ${taskId} → ${resizedKey}`);
+    } catch (err) {
+      console.error(`Failed to process key ${key}:`, err);
     }
-
-    const getResult = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
-    const buffer = await streamToBuffer(getResult.Body as Readable);
-
-    const resized = await sharp(buffer)
-      .resize(400, 400, { fit: 'inside', withoutEnlargement: true })
-      .jpeg({ quality: 85 })
-      .toBuffer();
-
-    const resizedKey = `originals/${taskId}/current/thumbnail.jpg`;
-    const resizedBucket = process.env.S3_RESIZED_BUCKET!;
-
-    await s3.send(new PutObjectCommand({
-      Bucket: resizedBucket,
-      Key: resizedKey,
-      Body: resized,
-      ContentType: 'image/jpeg',
-    }));
-
-    await dynamo.send(new UpdateCommand({
-      TableName: process.env.DYNAMO_TASKS_TABLE!,
-      Key: { taskId },
-      UpdateExpression: 'SET resizedImageKey = :rk, updatedAt = :ua',
-      ExpressionAttributeValues: {
-        ':rk': resizedKey,
-        ':ua': new Date().toISOString(),
-      },
-    }));
-
-    console.log(`Resized image for task ${taskId} → ${resizedKey}`);
   }
 };
