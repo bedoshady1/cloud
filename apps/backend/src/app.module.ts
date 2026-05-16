@@ -4,10 +4,12 @@ import { DynamodbModule } from './dynamodb/dynamodb.module';
 import { ProjectsModule } from './projects/projects.module';
 import { TasksModule } from './tasks/tasks.module';
 import { CommentsModule } from './comments/comments.module';
+import { TeamsModule } from './teams/teams.module';
+import { UsersModule } from './users/users.module';
 import { HealthController } from './health/health.controller';
 
 @Module({
-  imports: [AuthModule, DynamodbModule, ProjectsModule, TasksModule, CommentsModule],
+  imports: [AuthModule, DynamodbModule, ProjectsModule, TasksModule, CommentsModule, TeamsModule, UsersModule],
   controllers: [HealthController],
 })
 export class AppModule {}
