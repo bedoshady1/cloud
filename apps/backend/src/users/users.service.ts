@@ -9,7 +9,7 @@ export class UsersService {
   constructor(private readonly db: DynamodbService) {}
 
   async upsert(user: User): Promise<void> {
-    await this.db.put(this.table, user);
+    await this.db.put(this.table, user as unknown as Record<string, unknown>);
   }
 
   async findOne(userId: string): Promise<User> {

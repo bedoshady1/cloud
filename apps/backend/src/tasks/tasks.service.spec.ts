@@ -19,6 +19,14 @@ const mockMetrics = {
 
 const mockFiles = { deleteTaskImages: jest.fn() };
 
+const mockNotifications = {
+  publishTaskAssigned: jest.fn().mockResolvedValue(undefined),
+};
+
+const mockUsers = {
+  findOne: jest.fn().mockResolvedValue({ userId: 'emp-1', email: 'emp@test.com', displayName: 'Employee' }),
+};
+
 const manager = { userId: 'mgr-1', role: UserRole.Manager, teamId: '', email: 'mgr@test.com', displayName: 'Manager' };
 const employee = { userId: 'emp-1', role: UserRole.Employee, teamId: 'team-frontend', email: 'emp@test.com', displayName: 'Employee' };
 
@@ -27,7 +35,7 @@ describe('TasksService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new TasksService(mockDynamo as unknown as DynamodbService, mockMetrics as unknown as MetricsService, mockFiles as any);
+    service = new TasksService(mockDynamo as unknown as DynamodbService, mockMetrics as unknown as MetricsService, mockFiles as any, mockNotifications as any, mockUsers as any);
   });
 
   it('creates a task with ToDo status', async () => {

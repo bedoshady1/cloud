@@ -2,6 +2,8 @@ import { forwardRef, Inject, Injectable, NotFoundException, ForbiddenException }
 import { DynamodbService } from '../dynamodb/dynamodb.service';
 import { MetricsService } from '../metrics/metrics.service';
 import { FilesService } from '../files/files.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { UsersService } from '../users/users.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { Task, TaskStatus, UserRole, CognitoUser, AuditLogEntry } from '@mini-jira/shared';
@@ -16,6 +18,8 @@ export class TasksService {
     private readonly db: DynamodbService,
     private readonly metrics: MetricsService,
     @Inject(forwardRef(() => FilesService)) private readonly files: FilesService,
+    private readonly notifications: NotificationsService,
+    private readonly users: UsersService,
   ) {}
 
   async create(dto: CreateTaskDto, managerId: string): Promise<Task> {
@@ -38,6 +42,17 @@ export class TasksService {
       await this.metrics.taskCreated();
     } catch (err) {
       console.warn('[MetricsService] taskCreated failed', err);
+    }
+    const assignee = await this.users.findOne(dto.assigneeId).catch(() => null);
+    if (assignee) {
+      await this.notifications.publishTaskAssigned({
+        taskId: task.taskId,
+        taskTitle: task.title,
+        assigneeId: dto.assigneeId,
+        assigneeEmail: assignee.email,
+        teamId: dto.teamId,
+        managerId,
+      });
     }
     return task;
   }
