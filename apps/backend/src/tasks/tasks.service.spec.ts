@@ -53,4 +53,26 @@ describe('TasksService', () => {
     mockDynamo.get.mockResolvedValue(null);
     await expect(service.findOne('nope', manager)).rejects.toThrow('Task nope not found');
   });
+
+  it('does not write audit log when status is unchanged', async () => {
+    mockDynamo.get.mockResolvedValue({ taskId: 't1', teamId: 'team-frontend', status: TaskStatus.ToDo });
+    await service.update('t1', { status: TaskStatus.ToDo }, manager);
+    expect(mockDynamo.put).not.toHaveBeenCalled();
+  });
+
+  it('writes audit log when status changes', async () => {
+    mockDynamo.get.mockResolvedValue({ taskId: 't1', teamId: 'team-frontend', status: TaskStatus.ToDo });
+    await service.update('t1', { status: TaskStatus.Done }, manager);
+    expect(mockDynamo.put).toHaveBeenCalledTimes(1);
+  });
+
+  it('remove throws NotFoundException when task does not exist', async () => {
+    mockDynamo.get.mockResolvedValue(null);
+    await expect(service.remove('nope', manager)).rejects.toThrow('Task nope not found');
+  });
+
+  it('remove throws ForbiddenException when Employee removes another team task', async () => {
+    mockDynamo.get.mockResolvedValue({ taskId: 't1', teamId: 'team-backend' });
+    await expect(service.remove('t1', employee)).rejects.toThrow('Access denied');
+  });
 });

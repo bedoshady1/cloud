@@ -69,7 +69,7 @@ export class TasksService {
     updates.updatedAt = now;
     await this.db.update(this.table, { taskId }, updates);
 
-    if (dto.status && dto.status !== task.status) {
+    if (dto.status !== undefined && dto.status !== task.status) {
       const entry: AuditLogEntry = {
         taskId,
         timestamp: now,
@@ -83,9 +83,8 @@ export class TasksService {
     }
   }
 
-  async remove(taskId: string): Promise<void> {
-    const task = await this.db.get(this.table, { taskId });
-    if (!task) throw new NotFoundException(`Task ${taskId} not found`);
+  async remove(taskId: string, caller: CognitoUser): Promise<void> {
+    await this.findOne(taskId, caller);
     await this.db.delete(this.table, { taskId });
   }
 

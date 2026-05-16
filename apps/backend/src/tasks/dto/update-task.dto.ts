@@ -1,4 +1,4 @@
-import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { IsDateString, IsEnum, IsOptional, IsString } from 'class-validator';
 import { TaskPriority, TaskStatus } from '@mini-jira/shared';
 
 export class UpdateTaskDto {
@@ -6,6 +6,6 @@ export class UpdateTaskDto {
   @IsEnum(TaskPriority) @IsOptional() priority?: TaskPriority;
   @IsString() @IsOptional() title?: string;
   @IsString() @IsOptional() description?: string;
-  @IsString() @IsOptional() deadline?: string;
+  @IsDateString() @IsOptional() deadline?: string;
   @IsString() @IsOptional() assigneeId?: string;
 }

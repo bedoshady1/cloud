@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { TasksService } from './tasks.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
@@ -20,7 +20,15 @@ export class TasksController {
   @Get()
   findAll(@CurrentUser() user: CognitoUser, @Query('limit') limit?: string, @Query('lastKey') lastKey?: string) {
     const parsedLimit = Math.max(1, Math.min(100, parseInt(limit ?? '20', 10) || 20));
-    return this.tasksService.findAll(user, parsedLimit);
+    let parsedLastKey: Record<string, unknown> | undefined;
+    if (lastKey) {
+      try {
+        parsedLastKey = JSON.parse(decodeURIComponent(lastKey));
+      } catch {
+        throw new BadRequestException('Invalid lastKey format');
+      }
+    }
+    return this.tasksService.findAll(user, parsedLimit, parsedLastKey);
   }
 
   @Get(':id')
@@ -35,8 +43,8 @@ export class TasksController {
 
   @Delete(':id')
   @ManagerOnly()
-  remove(@Param('id') id: string) {
-    return this.tasksService.remove(id);
+  remove(@Param('id') id: string, @CurrentUser() user: CognitoUser) {
+    return this.tasksService.remove(id, user);
   }
 
   @Get(':id/audit')
