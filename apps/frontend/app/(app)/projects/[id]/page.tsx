@@ -18,7 +18,7 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
   ]);
 
   const tasks = tasksResult.items.filter((t) => t.projectId === params.id);
-  const teamNames = teamsResult.items.map((t) => t.teamId);
+  const teamNames = teamsResult.items.map((t) => t.name);
 
   return (
     <div className="space-y-4">
@@ -26,7 +26,7 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
         <h1 className="text-2xl font-bold">{project.title}</h1>
         {project.description && <p className="text-gray-500 text-sm mt-1">{project.description}</p>}
       </div>
-      <KanbanBoardClient initialTasks={tasks} teams={teamNames} user={user} token={token} />
+      <KanbanBoardClient initialTasks={tasks} teams={teamNames} user={user} token={token} projectId={params.id} />
     </div>
   );
 }

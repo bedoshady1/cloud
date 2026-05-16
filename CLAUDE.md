@@ -171,7 +171,7 @@ ASG: min 2 / max 4, Amazon Linux 2023, Node.js 20, PM2. Health check: `/api/heal
 | Plan 2 | Core CRUD API (NestJS + DynamoDB) | **Tasks 1–8 complete; Task 9 (smoke test, AWS-dependent) pending** |
 | Plan 3 | File Pipeline (S3 + Lambda resize) | **Code complete (Tasks 2–4 done); AWS Console steps deferred** |
 | Plan 4 | Event-Driven Layer (SNS + SQS + Worker) | **Code complete (Tasks 2–3 done); AWS Console steps deferred** |
-| Plan 5 | Scheduled Jobs (EventBridge + Digest Lambda) | Pending |
+| Plan 5 | Scheduled Jobs (EventBridge + Digest Lambda) | **Code complete (Task 2 done); AWS Console steps deferred** |
 | Plan 6 | Frontend (Next.js + Kanban UI) | Pending |
 | Plan 7 | Infrastructure (VPC + ALB + ASG + CloudFront) | Pending |
 
@@ -218,9 +218,25 @@ All code is written and tested. These AWS Console steps must be completed **befo
 - Lambda → Add trigger → SQS: queue `mini-jira-task-assigned-queue`, batch size 1
 - IAM → `AssignmentWorkerLambdaRole` → inline policy: `sqs:ReceiveMessage`, `sqs:DeleteMessage`, `sqs:GetQueueAttributes` on queue ARN; `dynamodb:PutItem` on `mini-jira-audit-log` table; `cloudwatch:PutMetricData` on `*`
 
+### From Plan 5 — Scheduled Jobs
+
+**SNS Topics (Plan 5, Task 1)**
+- SNS → Create standard topic: `mini-jira-daily-digest` → note Topic ARN
+- SNS → Create standard topic: `mini-jira-alerts` → add email subscription (manager email) → confirm from inbox
+- Add to Lambda env: `SNS_DIGEST_TOPIC_ARN=arn:aws:sns:us-east-1:<account>:mini-jira-daily-digest`
+
+**Daily Digest Lambda + EventBridge Rule (Plan 5, Task 3)**
+- Build + zip (use WSL or Git Bash on Windows): `cd lambdas/daily-digest && npm install && npm run build && cd dist && zip -r ../function.zip .`
+- Lambda → Create function: name `mini-jira-daily-digest`, runtime Node.js 20.x, new role `DailyDigestLambdaRole`
+- Upload `lambdas/daily-digest/function.zip`
+- Lambda env vars: `DYNAMO_TASKS_TABLE=mini-jira-tasks`, `DYNAMO_USERS_TABLE=mini-jira-users`, `SNS_DIGEST_TOPIC_ARN=arn:aws:sns:us-east-1:<account>:mini-jira-daily-digest`, `APP_URL=https://<cloudfront-domain>`, `AWS_REGION=us-east-1`; timeout: 300s
+- IAM → `DailyDigestLambdaRole` → inline policy: `dynamodb:Scan` on tasks table, `dynamodb:GetItem` on users table, `sns:Publish` on digest topic, `cloudwatch:PutMetricData` on `*`
+- EventBridge → Rules → Create rule: name `mini-jira-daily-digest-rule`, schedule `cron(0 9 * * ? *)`, target Lambda `mini-jira-daily-digest`
+- CloudWatch → Alarms → Create alarm: metric `MiniJira/OverdueTasks`, threshold `> 10`, name `OverdueTasksAlarm`, action → SNS topic `mini-jira-alerts`
+
 ---
 
-## Current State (Plan 4 code complete — 32 backend + 15 Lambda tests passing)
+## Current State (Plan 5 code complete — 32 backend + 25 Lambda tests passing)
 
 **Done:**
 - Monorepo root scaffolded: `package.json`, `turbo.json`, `.gitignore`
@@ -239,8 +255,9 @@ All code is written and tested. These AWS Console steps must be completed **befo
 - Plan 3 Task 4: `image-resize` Lambda — sharp 400×400 JPEG, per-record error isolation, body undefined guard, DynamoDB condition check
 - Plan 4 Task 2: `NotificationsService` — SNS publish on task assignment; isolated try/catch in `TasksService.create()` so SNS failure never blocks task creation
 - Plan 4 Task 3: `assignment-worker` Lambda — SQS trigger, SNS envelope unwrap, AuditLog write (DynamoDB PutItem), CloudWatch `MiniJira/TasksAssigned` metric; independent per-record try/catch for DynamoDB and CloudWatch
+- Plan 5 Task 2: `daily-digest` Lambda — EventBridge-triggered, paginated DynamoDB scan (`deadline <= today AND status != Done`), per-assignee SNS digest, CloudWatch `OverdueTasks` + `DailyDigestSent` metrics; all AWS calls isolated; 10 tests passing
 
-**Up next:** Plan 5 — Scheduled Jobs (EventBridge + Digest Lambda)
+**Up next:** Plan 6 — Frontend (Next.js + Kanban UI)
 
 ---
 

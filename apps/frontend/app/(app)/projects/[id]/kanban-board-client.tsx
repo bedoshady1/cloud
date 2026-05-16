@@ -10,12 +10,13 @@ interface KanbanBoardClientProps {
   teams: string[];
   user: CognitoUser;
   token: string;
+  projectId: string;
 }
 
-export function KanbanBoardClient({ initialTasks, teams, user, token }: KanbanBoardClientProps) {
+export function KanbanBoardClient({ initialTasks, teams, user, token, projectId }: KanbanBoardClientProps) {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const { data } = useTasks(token);
-  const tasks = data?.items ?? initialTasks;
+  const tasks = (data?.items ?? initialTasks).filter((t) => t.projectId === projectId);
 
   return (
     <>

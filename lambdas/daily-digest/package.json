@@ -19,5 +19,5 @@
     "ts-jest": "^29.0.0",
     "typescript": "^5.4.0"
   },
-  "jest": { "preset": "ts-jest", "testEnvironment": "node" }
+  "jest": { "preset": "ts-jest", "testEnvironment": "node", "testPathIgnorePatterns": ["<rootDir>/dist/"] }
 }

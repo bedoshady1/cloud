@@ -51,25 +51,34 @@ export function buildDigestEmail(displayName: string, tasks: TaskItem[], date: s
 
 export const handler = async (): Promise<void> => {
   const today = getTodayDateString();
-  const tasksTable = process.env.DYNAMO_TASKS_TABLE!;
-  const usersTable = process.env.DYNAMO_USERS_TABLE!;
-  const digestTopicArn = process.env.SNS_DIGEST_TOPIC_ARN!;
+  const tasksTable = process.env.DYNAMO_TASKS_TABLE;
+  const usersTable = process.env.DYNAMO_USERS_TABLE;
+  const digestTopicArn = process.env.SNS_DIGEST_TOPIC_ARN;
   const appUrl = process.env.APP_URL || 'https://your-app.cloudfront.net';
+
+  for (const [name, val] of [['DYNAMO_TASKS_TABLE', tasksTable], ['DYNAMO_USERS_TABLE', usersTable], ['SNS_DIGEST_TOPIC_ARN', digestTopicArn]] as [string, string | undefined][]) {
+    if (!val) throw new Error(`Missing required env var: ${name}`);
+  }
 
   // Paginated scan: deadline <= today AND status != Done
   let items: TaskItem[] = [];
   let lastKey: Record<string, any> | undefined;
-  do {
-    const scanResult = await dynamo.send(new ScanCommand({
-      TableName: tasksTable,
-      FilterExpression: 'deadline <= :today AND #st <> :done',
-      ExpressionAttributeNames: { '#st': 'status' },
-      ExpressionAttributeValues: { ':today': today, ':done': 'Done' },
-      ExclusiveStartKey: lastKey,
-    }));
-    items.push(...((scanResult.Items ?? []) as TaskItem[]));
-    lastKey = scanResult.LastEvaluatedKey as Record<string, any> | undefined;
-  } while (lastKey);
+  try {
+    do {
+      const scanResult = await dynamo.send(new ScanCommand({
+        TableName: tasksTable,
+        FilterExpression: 'deadline <= :today AND #st <> :done',
+        ExpressionAttributeNames: { '#st': 'status' },
+        ExpressionAttributeValues: { ':today': today, ':done': 'Done' },
+        ExclusiveStartKey: lastKey,
+      }));
+      items.push(...((scanResult.Items ?? []) as TaskItem[]));
+      lastKey = scanResult.LastEvaluatedKey as Record<string, any> | undefined;
+    } while (lastKey);
+  } catch (e) {
+    console.error('Failed to scan Tasks table:', e);
+    throw e;
+  }
 
   if (items.length === 0) {
     console.log(`No tasks due today (${today}). Exiting.`);

@@ -1,7 +1,6 @@
 'use client';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Badge } from '@/components/ui/badge';
 import { Task, TaskPriority } from '@mini-jira/shared';
 import { CalendarDays } from 'lucide-react';
 
