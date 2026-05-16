@@ -4,15 +4,8 @@ import { TasksService } from '../tasks/tasks.service';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { ManagerOnly, TeamGuard } from '../auth/team.guard';
 import { CognitoUser } from '@mini-jira/shared';
-import { IsString } from 'class-validator';
-
-class UploadImageDto {
-  @IsString() filename: string;
-}
-
-class ConfirmUploadDto {
-  @IsString() imageKey: string;
-}
+import { UploadImageDto } from './dto/upload-image.dto';
+import { ConfirmUploadDto } from './dto/confirm-upload.dto';
 
 @Controller('tasks/:taskId/image')
 @UseGuards(TeamGuard)
@@ -48,7 +41,8 @@ export class FilesController {
 
   @Delete()
   @ManagerOnly()
-  async deleteImage(@Param('taskId') taskId: string) {
+  async deleteImage(@Param('taskId') taskId: string, @CurrentUser() user: CognitoUser) {
+    await this.tasksService.findOne(taskId, user);
     await this.filesService.deleteTaskImages(taskId);
     return { success: true };
   }
