@@ -30,6 +30,8 @@ describe('NotificationsService', () => {
     const parsed = JSON.parse(callArg.Message);
     expect(parsed.taskId).toBe('t1');
     expect(parsed.assigneeEmail).toBe('sara@example.com');
+    expect(parsed.teamId).toBe('team-frontend');
+    expect(parsed.managerId).toBe('mgr-1');
     expect(parsed.assignedAt).toBeDefined();
     expect(callArg.Subject).toBe('[Mini-Jira] New task assigned: Fix bug');
     expect(callArg.TopicArn).toBe('arn:aws:sns:us-east-1:123:test-topic');

@@ -170,7 +170,7 @@ ASG: min 2 / max 4, Amazon Linux 2023, Node.js 20, PM2. Health check: `/api/heal
 | Plan 1 | Auth & Cognito Setup | **Complete** |
 | Plan 2 | Core CRUD API (NestJS + DynamoDB) | **Tasks 1–8 complete; Task 9 (smoke test, AWS-dependent) pending** |
 | Plan 3 | File Pipeline (S3 + Lambda resize) | **Code complete (Tasks 2–4 done); AWS Console steps deferred** |
-| Plan 4 | Event-Driven Layer (SNS + SQS + Worker) | Pending |
+| Plan 4 | Event-Driven Layer (SNS + SQS + Worker) | **Code complete (Tasks 2–3 done); AWS Console steps deferred** |
 | Plan 5 | Scheduled Jobs (EventBridge + Digest Lambda) | Pending |
 | Plan 6 | Frontend (Next.js + Kanban UI) | Pending |
 | Plan 7 | Infrastructure (VPC + ALB + ASG + CloudFront) | Pending |
@@ -198,9 +198,29 @@ All code is written and tested. These AWS Console steps must be completed **befo
 - S3 trigger: bucket `mini-jira-originals-<account-id>`, event type `PUT`, prefix `originals/`
 - IAM → `ImageResizeLambdaRole` → inline policy: `s3:GetObject` on originals, `s3:PutObject` on resized, `dynamodb:UpdateItem` on tasks table
 
+### From Plan 4 — Event-Driven Layer
+
+**SNS Topic + SQS Queue (Plan 4, Task 1)**
+- SNS → Create standard topic: `mini-jira-task-assigned` → note Topic ARN
+- SNS → Create email subscription on that topic (test email for now) → confirm from inbox
+- SQS → Create standard queue: `mini-jira-task-assigned-queue` (visibility timeout: 30s)
+- SQS → Create DLQ: `mini-jira-task-assigned-dlq` → attach to above queue (maxReceiveCount: 3)
+- SNS → Create SQS subscription on `mini-jira-task-assigned` → Endpoint: ARN of queue
+- SQS → Access Policy → add: `Effect=Allow, Principal={Service:sns.amazonaws.com}, Action=sqs:SendMessage, Condition={ArnEquals:{aws:SourceArn:<sns-arn>}}`
+- Add to `apps/backend/.env`: `SNS_TASK_ASSIGNED_TOPIC_ARN=arn:aws:sns:us-east-1:<account>:mini-jira-task-assigned`
+- IAM → Role `EC2InstanceRole` → inline policy: `sns:Publish` on the topic ARN
+
+**Assignment Worker Lambda (Plan 4, Task 4)**
+- Build + zip (use WSL or Git Bash on Windows — `npm run package` uses bash zip): `cd lambdas/assignment-worker && npm install && npm run build && cd dist && zip -r ../function.zip .`
+- Lambda → Create function: name `mini-jira-assignment-worker`, runtime Node.js 20.x, new role `AssignmentWorkerLambdaRole`
+- Upload `lambdas/assignment-worker/function.zip`
+- Lambda env vars: `DYNAMO_AUDIT_LOG_TABLE=mini-jira-audit-log`, `AWS_REGION=us-east-1`
+- Lambda → Add trigger → SQS: queue `mini-jira-task-assigned-queue`, batch size 1
+- IAM → `AssignmentWorkerLambdaRole` → inline policy: `sqs:ReceiveMessage`, `sqs:DeleteMessage`, `sqs:GetQueueAttributes` on queue ARN; `dynamodb:PutItem` on `mini-jira-audit-log` table; `cloudwatch:PutMetricData` on `*`
+
 ---
 
-## Current State (Plan 3 code complete — 29 backend + 8 Lambda tests passing)
+## Current State (Plan 4 code complete — 32 backend + 15 Lambda tests passing)
 
 **Done:**
 - Monorepo root scaffolded: `package.json`, `turbo.json`, `.gitignore`
@@ -217,8 +237,10 @@ All code is written and tested. These AWS Console steps must be completed **befo
 - Plan 3 Task 2: `FilesService` — presigned S3 PUT URLs, version retention (history/ prefix), bulk delete, DynamoDB cleanup
 - Plan 3 Task 3: `FilesController` — POST/confirm/DELETE on `/api/tasks/:id/image`; task deletion auto-cleans images via forwardRef injection
 - Plan 3 Task 4: `image-resize` Lambda — sharp 400×400 JPEG, per-record error isolation, body undefined guard, DynamoDB condition check
+- Plan 4 Task 2: `NotificationsService` — SNS publish on task assignment; isolated try/catch in `TasksService.create()` so SNS failure never blocks task creation
+- Plan 4 Task 3: `assignment-worker` Lambda — SQS trigger, SNS envelope unwrap, AuditLog write (DynamoDB PutItem), CloudWatch `MiniJira/TasksAssigned` metric; independent per-record try/catch for DynamoDB and CloudWatch
 
-**Up next:** Plan 4 — Event-Driven Layer (SNS + SQS + Assignment Worker Lambda)
+**Up next:** Plan 5 — Scheduled Jobs (EventBridge + Digest Lambda)
 
 ---
 

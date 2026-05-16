@@ -47,8 +47,9 @@ describe('parseMessage', () => {
     expect(() => parseMessage('not-json')).toThrow();
   });
 
-  it('throws when assignedAt is missing', () => {
-    expect(() => parseMessage(JSON.stringify({ taskId: 't1', teamId: 'team-a' }))).toThrow('assignedAt');
+  it('throws when required fields are missing', () => {
+    expect(() => parseMessage(JSON.stringify({ taskId: 't1', teamId: 'team-a' }))).toThrow('missing required fields');
+    expect(() => parseMessage(JSON.stringify({ taskId: 't1', teamId: 'team-a', assignedAt: 'x', assigneeId: 'e1' }))).toThrow('missing required fields');
   });
 });
 
