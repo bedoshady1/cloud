@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { forwardRef, Inject, Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { DynamodbService } from '../dynamodb/dynamodb.service';
 import { MetricsService } from '../metrics/metrics.service';
+import { FilesService } from '../files/files.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { Task, TaskStatus, UserRole, CognitoUser, AuditLogEntry } from '@mini-jira/shared';
@@ -14,6 +15,7 @@ export class TasksService {
   constructor(
     private readonly db: DynamodbService,
     private readonly metrics: MetricsService,
+    @Inject(forwardRef(() => FilesService)) private readonly files: FilesService,
   ) {}
 
   async create(dto: CreateTaskDto, managerId: string): Promise<Task> {
@@ -100,7 +102,8 @@ export class TasksService {
   }
 
   async remove(taskId: string, caller: CognitoUser): Promise<void> {
-    await this.findOne(taskId, caller);
+    const task = await this.findOne(taskId, caller);
+    if (task.imageKey) await this.files.deleteTaskImages(taskId);
     await this.db.delete(this.table, { taskId });
   }
 
