@@ -37,6 +37,19 @@ describe('TasksService', () => {
     expect(result.taskId).toBeDefined();
   });
 
+  it('calls taskCreated after creating a task', async () => {
+    const dto = { title: 'Fix bug', priority: TaskPriority.High, deadline: '2026-05-20', assigneeId: 'emp-1', teamId: 'team-frontend', projectId: 'proj-1' };
+    await service.create(dto, manager.userId);
+    expect(mockMetrics.taskCreated).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls taskClosed when status transitions to Done', async () => {
+    mockDynamo.get.mockResolvedValue({ taskId: 't1', teamId: 'team-frontend', status: TaskStatus.ToDo, createdAt: '2026-05-01T00:00:00.000Z' });
+    await service.update('t1', { status: TaskStatus.Done }, manager);
+    expect(mockMetrics.taskClosed).toHaveBeenCalledTimes(1);
+    expect(mockMetrics.taskClosed).toHaveBeenCalledWith('team-frontend', '2026-05-01T00:00:00.000Z');
+  });
+
   it('queries by teamId GSI when caller is Employee', async () => {
     await service.findAll(employee);
     expect(mockDynamo.query).toHaveBeenCalledWith(

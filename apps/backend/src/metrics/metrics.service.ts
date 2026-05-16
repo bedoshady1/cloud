@@ -4,11 +4,11 @@ import { CloudWatchClient, PutMetricDataCommand } from '@aws-sdk/client-cloudwat
 @Injectable()
 export class MetricsService {
   private readonly cw = new CloudWatchClient({ region: process.env.AWS_REGION || 'us-east-1' });
-  private readonly ns = 'MiniJira';
+  private readonly namespace = 'MiniJira';
 
   async taskCreated(): Promise<void> {
     await this.cw.send(new PutMetricDataCommand({
-      Namespace: this.ns,
+      Namespace: this.namespace,
       MetricData: [{ MetricName: 'TaskCreated', Value: 1, Unit: 'Count', Timestamp: new Date() }],
     }));
   }
@@ -16,7 +16,7 @@ export class MetricsService {
   async taskClosed(teamId: string, createdAt: string): Promise<void> {
     const hoursToClose = (Date.now() - new Date(createdAt).getTime()) / 3_600_000;
     await this.cw.send(new PutMetricDataCommand({
-      Namespace: this.ns,
+      Namespace: this.namespace,
       MetricData: [
         {
           MetricName: 'TaskClosed',

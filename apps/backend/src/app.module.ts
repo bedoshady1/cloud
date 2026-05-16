@@ -6,11 +6,10 @@ import { TasksModule } from './tasks/tasks.module';
 import { CommentsModule } from './comments/comments.module';
 import { TeamsModule } from './teams/teams.module';
 import { UsersModule } from './users/users.module';
-import { MetricsModule } from './metrics/metrics.module';
 import { HealthController } from './health/health.controller';
 
 @Module({
-  imports: [AuthModule, DynamodbModule, ProjectsModule, TasksModule, CommentsModule, TeamsModule, UsersModule, MetricsModule],
+  imports: [AuthModule, DynamodbModule, ProjectsModule, TasksModule, CommentsModule, TeamsModule, UsersModule],
   controllers: [HealthController],
 })
 export class AppModule {}

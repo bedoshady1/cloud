@@ -32,7 +32,11 @@ export class TasksService {
       updatedAt: now,
     };
     await this.db.put(this.table, task as unknown as Record<string, unknown>);
-    await this.metrics.taskCreated();
+    try {
+      await this.metrics.taskCreated();
+    } catch (err) {
+      console.warn('[MetricsService] taskCreated failed', err);
+    }
     return task;
   }
 
@@ -86,7 +90,11 @@ export class TasksService {
       };
       await this.db.put(this.auditTable, entry as unknown as Record<string, unknown>);
       if (dto.status === TaskStatus.Done) {
-        await this.metrics.taskClosed(task.teamId, task.createdAt);
+        try {
+          await this.metrics.taskClosed(task.teamId, task.createdAt);
+        } catch (err) {
+          console.warn('[MetricsService] taskClosed failed', err);
+        }
       }
     }
   }
