@@ -51,6 +51,22 @@ export function useCreateTask(token: string) {
   });
 }
 
+export function useUploadTaskImage(token: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ taskId, file }: { taskId: string; file: File }) => {
+      const { uploadUrl, key } = await apiClient.files.getUploadUrl(taskId, file.name, token);
+      await apiClient.files.uploadToS3(uploadUrl, file);
+      await apiClient.files.confirmUpload(taskId, key, token);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      toast.success('Image uploaded');
+    },
+    onError: (e: Error) => toast.error(`Image upload failed: ${e.message}`),
+  });
+}
+
 export function useDeleteTask(token: string) {
   const queryClient = useQueryClient();
   return useMutation({

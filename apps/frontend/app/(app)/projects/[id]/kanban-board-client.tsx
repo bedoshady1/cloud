@@ -8,7 +8,6 @@ import { useTasks } from '@/hooks/use-tasks';
 
 interface KanbanBoardClientProps {
   initialTasks: Task[];
-  teams: string[];
   teamObjects: Team[];
   users: User[];
   user: CognitoUser;
@@ -16,7 +15,7 @@ interface KanbanBoardClientProps {
   projectId: string;
 }
 
-export function KanbanBoardClient({ initialTasks, teams, teamObjects, users, user, token, projectId }: KanbanBoardClientProps) {
+export function KanbanBoardClient({ initialTasks, teamObjects, users, user, token, projectId }: KanbanBoardClientProps) {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const { data } = useTasks(token);
@@ -34,7 +33,7 @@ export function KanbanBoardClient({ initialTasks, teams, teamObjects, users, use
           </button>
         </div>
       )}
-      <KanbanBoard tasks={tasks} teams={teams} user={user} token={token} onTaskClick={setSelectedTask} />
+      <KanbanBoard tasks={tasks} teams={teamObjects} user={user} token={token} onTaskClick={setSelectedTask} />
       <TaskDetailModal
         task={selectedTask}
         open={!!selectedTask}

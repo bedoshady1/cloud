@@ -51,5 +51,9 @@ export const apiClient = {
       request<{ uploadUrl: string; key: string }>(`/tasks/${taskId}/image`, { method: 'POST', body: JSON.stringify({ filename }) }, token),
     confirmUpload: (taskId: string, imageKey: string, token: string) =>
       request<{ success: boolean }>(`/tasks/${taskId}/image/confirm`, { method: 'POST', body: JSON.stringify({ imageKey }) }, token),
+    uploadToS3: async (uploadUrl: string, file: File): Promise<void> => {
+      const res = await fetch(uploadUrl, { method: 'PUT', body: file, headers: { 'Content-Type': file.type } });
+      if (!res.ok) throw new Error(`S3 upload failed: ${res.status}`);
+    },
   },
 };
