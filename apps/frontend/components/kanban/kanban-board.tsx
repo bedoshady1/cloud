@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core';
-import { Task, TaskStatus, UserRole, CognitoUser } from '@mini-jira/shared';
+import { Task, TaskStatus, UserRole, CognitoUser, Team } from '@mini-jira/shared';
 import { KanbanColumn } from './kanban-column';
 import { useUpdateTaskStatus } from '@/hooks/use-tasks';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -10,7 +10,7 @@ const ALL_STATUSES: TaskStatus[] = [TaskStatus.ToDo, TaskStatus.InProgress, Task
 
 interface KanbanBoardProps {
   tasks: Task[];
-  teams: string[];
+  teams: Team[];
   user: CognitoUser;
   token: string;
   onTaskClick: (task: Task) => void;
@@ -19,6 +19,7 @@ interface KanbanBoardProps {
 export function KanbanBoard({ tasks, teams, user, token, onTaskClick }: KanbanBoardProps) {
   const [teamFilter, setTeamFilter] = useState<string>('all');
   const updateStatus = useUpdateTaskStatus(token);
+  const isManager = user.role === UserRole.Manager;
 
   const filtered = teamFilter === 'all' ? tasks : tasks.filter((t) => t.teamId === teamFilter);
 
@@ -41,7 +42,7 @@ export function KanbanBoard({ tasks, teams, user, token, onTaskClick }: KanbanBo
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All teams</SelectItem>
-              {teams.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+              {teams.map((t) => <SelectItem key={t.teamId} value={t.teamId}>{t.name}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
@@ -54,6 +55,8 @@ export function KanbanBoard({ tasks, teams, user, token, onTaskClick }: KanbanBo
               status={status}
               tasks={filtered.filter((t) => t.status === status)}
               onTaskClick={onTaskClick}
+              isManager={isManager}
+              token={token}
             />
           ))}
         </div>

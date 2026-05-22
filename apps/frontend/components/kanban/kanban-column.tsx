@@ -23,9 +23,11 @@ interface KanbanColumnProps {
   status: TaskStatus;
   tasks: Task[];
   onTaskClick: (task: Task) => void;
+  isManager: boolean;
+  token: string;
 }
 
-export function KanbanColumn({ status, tasks, onTaskClick }: KanbanColumnProps) {
+export function KanbanColumn({ status, tasks, onTaskClick, isManager, token }: KanbanColumnProps) {
   const { setNodeRef } = useDroppable({ id: status });
 
   return (
@@ -38,7 +40,15 @@ export function KanbanColumn({ status, tasks, onTaskClick }: KanbanColumnProps) 
         <div ref={setNodeRef} className="flex flex-1 flex-col gap-2 p-2 min-h-[120px]">
           {tasks.length === 0
             ? <EmptyState message="No tasks" />
-            : tasks.map((task) => <TaskCard key={task.taskId} task={task} onClick={onTaskClick} />)
+            : tasks.map((task) => (
+              <TaskCard
+                key={task.taskId}
+                task={task}
+                onClick={onTaskClick}
+                isManager={isManager}
+                token={token}
+              />
+            ))
           }
         </div>
       </SortableContext>
