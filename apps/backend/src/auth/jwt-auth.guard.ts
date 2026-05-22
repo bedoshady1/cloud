@@ -14,7 +14,7 @@ import { JwtStrategy } from './jwt.strategy';
 export class JwtAuthGuard implements CanActivate {
   private verifier: CognitoJwtVerifierSingleUserPool<{
     userPoolId: string;
-    tokenUse: 'access';
+    tokenUse: 'id';
     clientId: string;
   }>;
 
@@ -29,7 +29,7 @@ export class JwtAuthGuard implements CanActivate {
     }
     this.verifier = CognitoJwtVerifier.create({
       userPoolId: poolId,
-      tokenUse: 'access',
+      tokenUse: 'id',
       clientId,
     });
   }

@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 
 export default async function ProjectsPage() {
   const cookieStore = await cookies();
-  const token = cookieStore.get('access_token')?.value ?? null;
+  const token = cookieStore.get('id_token')?.value ?? null;
   if (!token) redirect('/login');
   const user = parseJwtPayload(token);
   if (!user) redirect('/login');

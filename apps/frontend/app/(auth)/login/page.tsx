@@ -4,7 +4,7 @@ export default function LoginPage() {
   const cognitoDomain = process.env.NEXT_PUBLIC_COGNITO_DOMAIN!;
   const clientId = process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID!;
   const redirectUri = encodeURIComponent(`${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`);
-  const loginUrl = `${cognitoDomain}/login?client_id=${clientId}&response_type=token&scope=openid+email+profile&redirect_uri=${redirectUri}`;
+  const loginUrl = `${cognitoDomain}/oauth2/authorize?client_id=${clientId}&response_type=token&scope=openid+email+profile&redirect_uri=${redirectUri}&prompt=login`;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50">

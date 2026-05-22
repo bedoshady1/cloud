@@ -65,6 +65,9 @@ export class TasksService {
     if (caller.role === UserRole.Manager) {
       return this.db.scan({ TableName: this.table, Limit: limit, ExclusiveStartKey: lastEvaluatedKey as Record<string, any> | undefined });
     }
+    if (!caller.teamId) {
+      throw new ForbiddenException('User has no teamId assigned — contact your administrator');
+    }
     return this.db.query({
       TableName: this.table,
       IndexName: this.teamGsi,
@@ -109,7 +112,11 @@ export class TasksService {
         toStatus: dto.status,
         teamId: task.teamId,
       };
-      await this.db.put(this.auditTable, entry as unknown as Record<string, unknown>);
+      try {
+        await this.db.put(this.auditTable, entry as unknown as Record<string, unknown>);
+      } catch (err) {
+        console.warn('[AuditLog] write failed', err);
+      }
       if (dto.status === TaskStatus.Done) {
         try {
           await this.metrics.taskClosed(task.teamId, task.createdAt);

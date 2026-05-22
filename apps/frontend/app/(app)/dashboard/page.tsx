@@ -6,12 +6,12 @@ import { TaskStatus } from '@mini-jira/shared';
 
 export default async function DashboardPage() {
   const cookieStore = await cookies();
-  const token = cookieStore.get('access_token')?.value ?? null;
-  if (!token) redirect('/login');
-  const user = parseJwtPayload(token);
+  const idToken = cookieStore.get('id_token')?.value ?? null;
+  if (!idToken) redirect('/login');
+  const user = parseJwtPayload(idToken);
   if (!user) redirect('/login');
 
-  const { items: tasks } = await apiClient.tasks.list(token);
+  const { items: tasks } = await apiClient.tasks.list(idToken);
   const total = tasks.length;
   const done = tasks.filter((t) => t.status === TaskStatus.Done).length;
   const inProgress = tasks.filter((t) => t.status === TaskStatus.InProgress).length;

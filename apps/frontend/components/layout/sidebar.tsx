@@ -19,7 +19,11 @@ export function Sidebar({ user }: { user: CognitoUser }) {
 
   const handleSignOut = () => {
     document.cookie = 'access_token=; Max-Age=0; path=/';
-    window.location.href = '/login';
+    document.cookie = 'id_token=; Max-Age=0; path=/';
+    const cognitoDomain = process.env.NEXT_PUBLIC_COGNITO_DOMAIN!;
+    const clientId = process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID!;
+    const logoutUri = encodeURIComponent(`${process.env.NEXT_PUBLIC_APP_URL}/login`);
+    window.location.href = `${cognitoDomain}/logout?client_id=${clientId}&logout_uri=${logoutUri}`;
   };
 
   return (

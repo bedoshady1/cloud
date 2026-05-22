@@ -14,7 +14,7 @@ export function parseJwtPayload(token: string): CognitoUser | null {
     return {
       userId: decoded.sub,
       email: decoded.email,
-      displayName: decoded.name,
+      displayName: decoded.name ?? decoded.email ?? decoded['cognito:username'] ?? 'User',
       role: decoded['custom:role'],
       teamId: decoded['custom:teamId'],
     };

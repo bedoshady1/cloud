@@ -9,6 +9,7 @@ export function useTasks(token: string) {
     queryKey: ['tasks', token],
     queryFn: () => apiClient.tasks.list(token),
     enabled: !!token,
+    refetchInterval: 5000,
   });
 }
 
@@ -17,11 +18,24 @@ export function useUpdateTaskStatus(token: string) {
   return useMutation({
     mutationFn: ({ taskId, status }: { taskId: string; status: TaskStatus }) =>
       apiClient.tasks.update(taskId, { status }, token),
+    onMutate: async ({ taskId, status }) => {
+      await queryClient.cancelQueries({ queryKey: ['tasks', token] });
+      const previous = queryClient.getQueryData<{ items: Task[] }>(['tasks', token]);
+      if (previous) {
+        queryClient.setQueryData(['tasks', token], {
+          items: previous.items.map((t) => t.taskId === taskId ? { ...t, status } : t),
+        });
+      }
+      return { previous };
+    },
+    onError: (e: Error, _vars, ctx) => {
+      if (ctx?.previous) queryClient.setQueryData(['tasks', token], ctx.previous);
+      toast.error(e.message);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       toast.success('Task status updated');
     },
-    onError: (e: Error) => toast.error(e.message),
   });
 }
 
