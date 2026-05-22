@@ -3,8 +3,8 @@ module.exports = {
     {
       name: 'backend',
       cwd: '/home/ec2-user/mini-jira/apps/backend',
-      script: 'npm',
-      args: 'run start',
+      script: 'node',
+      args: 'dist/main.js',
       env: {
         NODE_ENV: 'production',
         PORT: '3001',
