@@ -16,10 +16,11 @@ interface KanbanBoardClientProps {
 }
 
 export function KanbanBoardClient({ initialTasks, teamObjects, users, user, token, projectId }: KanbanBoardClientProps) {
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const { data } = useTasks(token);
   const tasks = (data?.items ?? initialTasks).filter((t) => t.projectId === projectId);
+  const selectedTask = selectedTaskId ? (tasks.find((t) => t.taskId === selectedTaskId) ?? null) : null;
 
   return (
     <>
@@ -33,11 +34,11 @@ export function KanbanBoardClient({ initialTasks, teamObjects, users, user, toke
           </button>
         </div>
       )}
-      <KanbanBoard tasks={tasks} teams={teamObjects} user={user} token={token} onTaskClick={setSelectedTask} />
+      <KanbanBoard tasks={tasks} teams={teamObjects} user={user} token={token} onTaskClick={(t) => setSelectedTaskId(t.taskId)} />
       <TaskDetailModal
         task={selectedTask}
         open={!!selectedTask}
-        onClose={() => setSelectedTask(null)}
+        onClose={() => setSelectedTaskId(null)}
         user={user}
         token={token}
       />

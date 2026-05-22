@@ -1,10 +1,9 @@
 'use client';
 import { useState } from 'react';
-import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core';
+import { DndContext, DragEndEvent, closestCenter, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { Task, TaskStatus, UserRole, CognitoUser, Team } from '@mini-jira/shared';
 import { KanbanColumn } from './kanban-column';
 import { useUpdateTaskStatus } from '@/hooks/use-tasks';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const ALL_STATUSES: TaskStatus[] = [TaskStatus.ToDo, TaskStatus.InProgress, TaskStatus.InReview, TaskStatus.Done];
 
@@ -21,6 +20,11 @@ export function KanbanBoard({ tasks, teams, user, token, onTaskClick }: KanbanBo
   const updateStatus = useUpdateTaskStatus(token);
   const isManager = user.role === UserRole.Manager;
 
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
+  );
+
   const filtered = teamFilter === 'all' ? tasks : tasks.filter((t) => t.teamId === teamFilter);
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -36,18 +40,17 @@ export function KanbanBoard({ tasks, teams, user, token, onTaskClick }: KanbanBo
       {user.role === UserRole.Manager && teams.length > 0 && (
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium text-gray-600">Filter by team:</span>
-          <Select value={teamFilter} onValueChange={(v) => setTeamFilter(v ?? 'all')}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="All teams" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All teams</SelectItem>
-              {teams.map((t) => <SelectItem key={t.teamId} value={t.teamId}>{t.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <select
+            value={teamFilter}
+            onChange={(e) => setTeamFilter(e.target.value)}
+            className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/50"
+          >
+            <option value="all">All teams</option>
+            {teams.map((t) => <option key={t.teamId} value={t.teamId}>{t.name}</option>)}
+          </select>
         </div>
       )}
-      <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <div className="flex gap-4 overflow-x-auto pb-4">
           {ALL_STATUSES.map((status) => (
             <KanbanColumn
