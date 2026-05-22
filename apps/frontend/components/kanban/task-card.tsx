@@ -58,6 +58,8 @@ export function TaskCard({ task, onClick, isManager, token }: TaskCardProps) {
       {isManager && (
         <button
           onClick={handleDelete}
+          onPointerDown={(e) => { e.stopPropagation(); pointerStart.current = null; }}
+          onPointerUp={(e) => e.stopPropagation()}
           disabled={deleteTask.isPending}
           className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity rounded p-0.5 text-gray-400 hover:text-red-500 hover:bg-red-50"
           aria-label="Delete task"
